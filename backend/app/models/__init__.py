@@ -1,24 +1,22 @@
-"""ORM models. Import order does not matter — SQLAlchemy resolves string-based
-relationships lazily. Everything is re-exported here for convenient imports
-(``from app.models import Trip, City, ...``).
-"""
-from app.models.user import User, load_user, saved_destinations
-from app.models.city import City
-from app.models.activity import Activity
+from app.models.base import db, utc_now
+from app.models.user import User
 from app.models.trip import Trip
-from app.models.stop import Stop
-from app.models.trip_activity import TripActivity
-from app.models.expense import EXPENSE_CATEGORIES, Expense
+from app.models.city import City
+from app.models.stop import TripStop
+from app.models.activity import Activity
+from app.models.itinerary_activity import ItineraryActivity
+from app.models.expense import Expense
+from app.models.shared_trip import SharedTrip
 
 __all__ = [
-    "User",
-    "load_user",
-    "saved_destinations",
-    "City",
-    "Activity",
-    "Trip",
-    "Stop",
-    "TripActivity",
-    "Expense",
-    "EXPENSE_CATEGORIES",
+    'db',
+    'utc_now',
+    'User',
+    'Trip',
+    'City',
+    'TripStop',
+    'Activity',
+    'ItineraryActivity',
+    'Expense',
+    'SharedTrip'
 ]

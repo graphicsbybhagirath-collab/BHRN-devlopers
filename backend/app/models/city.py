@@ -1,27 +1,33 @@
-from app.extensions import db
-
+from app.models.base import db
 
 class City(db.Model):
-    __tablename__ = "cities"
+    __tablename__ = 'city'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
-    country = db.Column(db.String(120), nullable=False)
-    region = db.Column(db.String(120))
-    cost_index = db.Column(db.Float, default=0.0, nullable=False)  # relative daily cost
-    popularity = db.Column(db.Integer, default=0, nullable=False)  # drives "popular cities"
-    latitude = db.Column(db.Float)
-    longitude = db.Column(db.Float)
-    image_url = db.Column(db.String(500))
+    name = db.Column(db.String(100), nullable=False, index=True)
+    country = db.Column(db.String(100), nullable=False, index=True)
+    region = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    image = db.Column(db.String(500), nullable=False)
+    cost_index = db.Column(db.Float, default=3.0)
+    popularity = db.Column(db.Float, default=4.5)
 
-    activities = db.relationship(
-        "Activity", back_populates="city", cascade="all, delete-orphan"
-    )
-    stops = db.relationship("Stop", back_populates="city")
+    # Relationships
+    activities = db.relationship('Activity', backref='city', cascade='all, delete-orphan', lazy='dynamic')
+    trip_stops = db.relationship('TripStop', backref='city', lazy='dynamic')
 
-    __table_args__ = (
-        db.UniqueConstraint("name", "country", name="uq_city_name_country"),
-    )
-
-    def __repr__(self):
-        return f"<City {self.name}, {self.country}>"
+    def to_dict(self, include_activities=False):
+        data = {
+            'id': self.id,
+            'name': self.name,
+            'country': self.country,
+            'region': self.region,
+            'description': self.description,
+            'image': self.image,
+            'cost_index': self.cost_index,
+            'popularity': self.popularity,
+            'activity_count': self.activities.count() if hasattr(self.activities, 'count') else 0
+        }
+        if include_activities:
+            data['activities'] = [a.to_dict() for a in self.activities.all()]
+        return data

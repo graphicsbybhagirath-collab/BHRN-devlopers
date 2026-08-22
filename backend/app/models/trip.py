@@ -1,47 +1,44 @@
-from datetime import datetime, timezone
-
-from app.extensions import db
-
+from app.models.base import db, utc_now
 
 class Trip(db.Model):
-    __tablename__ = "trips"
+    __tablename__ = 'trip'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     name = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text)
-    start_date = db.Column(db.Date)
-    end_date = db.Column(db.Date)
-    cover_photo_url = db.Column(db.String(500))
-    is_public = db.Column(db.Boolean, default=False, nullable=False)
-    public_slug = db.Column(db.String(64), unique=True, index=True)  # public share URL
-    created_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
-    )
-    updated_at = db.Column(
-        db.DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
+    description = db.Column(db.Text, default='')
+    start_date = db.Column(db.String(20), nullable=True)
+    end_date = db.Column(db.String(20), nullable=True)
+    cover_image = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
-    user = db.relationship("User", back_populates="trips")
-    stops = db.relationship(
-        "Stop",
-        back_populates="trip",
-        cascade="all, delete-orphan",
-        order_by="Stop.order_index",
-    )
-    expenses = db.relationship(
-        "Expense", back_populates="trip", cascade="all, delete-orphan"
-    )
+    # Relationships
+    stops = db.relationship('TripStop', backref='trip', cascade='all, delete-orphan', order_by='TripStop.order_index', lazy='joined')
+    expenses = db.relationship('Expense', backref='trip', cascade='all, delete-orphan', lazy='dynamic')
+    shared_links = db.relationship('SharedTrip', backref='trip', cascade='all, delete-orphan', lazy='dynamic')
 
-    @property
-    def duration_days(self):
-        """Inclusive number of days, or 0 if dates are not set."""
-        if self.start_date and self.end_date:
-            return (self.end_date - self.start_date).days + 1
-        return 0
+    def to_dict(self, include_details=False):
+        data = {
+            'id': self.id,
+            'user_id': self.user_id,
+            'name': self.name,
+            'description': self.description or '',
+            'start_date': self.start_date,
+            'end_date': self.end_date,
+            'cover_image': self.cover_image or '',
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'stop_count': len(self.stops) if self.stops else 0,
+        }
 
-    def __repr__(self):
-        return f"<Trip {self.name}>"
+        if include_details:
+            data['stops'] = [stop.to_dict(include_activities=True) for stop in self.stops]
+            data['expenses'] = [exp.to_dict() for exp in self.expenses.all()]
+            cities_set = []
+            for s in self.stops:
+                if s.city and s.city.name not in [c['name'] for c in cities_set]:
+                    cities_set.append(s.city.to_dict())
+            data['cities'] = cities_set
+        else:
+            data['cities_summary'] = [s.city.name for s in self.stops if s.city]
+
+        return data
